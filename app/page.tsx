@@ -6,11 +6,13 @@ import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
   const [uploadChannel, setUploadChannel] = useState<
-    "smartstore" | "cafe24" | null
+    "smartstore" | "cafe24" | "coupang" | null
   >(null);
   const [filterChannel, setFilterChannel] = useState<
-    "all" | "smartstore" | "cafe24"
+    "all" | "smartstore" | "cafe24" | "coupang"
   >("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -65,7 +67,7 @@ export default function Home() {
                   setUploadChannel(
                     value === ""
                       ? null
-                      : (value as "smartstore" | "cafe24")
+                      : (value as "smartstore" | "cafe24" | "coupang")
                   );
                 }}
                 className="border rounded px-3 py-2"
@@ -73,6 +75,7 @@ export default function Home() {
                 <option value="">-- 선택하세요 --</option>
                 <option value="smartstore">스마트스토어</option>
                 <option value="cafe24">카페24</option>
+                <option value="coupang">쿠팡</option>
               </select>
             </div>
 
@@ -86,6 +89,39 @@ export default function Home() {
           {message && (
             <p className="mt-4 text-sm font-medium text-gray-700">{message}</p>
           )}
+        </div>
+
+        {/* 기간 선택 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium mb-2">시작일</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">종료일</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border rounded px-3 py-2"
+              />
+            </div>
+            <button
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+            >
+              초기화
+            </button>
+          </div>
         </div>
 
         {/* 필터 탭 */}
@@ -120,10 +156,24 @@ export default function Home() {
           >
             카페24
           </button>
+          <button
+            onClick={() => setFilterChannel("coupang")}
+            className={`px-4 py-2 rounded ${
+              filterChannel === "coupang"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            쿠팡
+          </button>
         </div>
 
         {/* 대시보드 */}
-        <Dashboard channel={filterChannel} />
+        <Dashboard
+          channel={filterChannel}
+          startDate={startDate}
+          endDate={endDate}
+        />
       </div>
     </div>
   );

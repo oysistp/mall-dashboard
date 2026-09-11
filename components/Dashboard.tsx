@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LineChart,
   Line,
@@ -18,7 +18,9 @@ import {
 } from "recharts";
 
 interface DashboardProps {
-  channel: "all" | "smartstore" | "cafe24";
+  channel: "all" | "smartstore" | "cafe24" | "coupang";
+  startDate?: string;
+  endDate?: string;
 }
 
 interface DailyRevenue {
@@ -49,14 +51,65 @@ interface StatsData {
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
-export default function Dashboard({ channel }: DashboardProps) {
+export default function Dashboard({
+  channel,
+  startDate,
+  endDate,
+}: DashboardProps) {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const hasGeneratedSummary = useRef(false);
+  const isFirstChannelRender = useRef(true);
+
+  const fetchSummary = async (ch: string) => {
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const response = await fetch(
+        `/api/ai-summary?channel=${encodeURIComponent(ch)}`
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        setSummaryError(data.error || "AI 요약을 가져오지 못했어요");
+        setSummary(null);
+      } else {
+        setSummary(data.summary);
+      }
+    } catch (error) {
+      setSummaryError(`AI 요약 실패: ${String(error)}`);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const handleAiSummaryClick = () => {
+    hasGeneratedSummary.current = true;
+    fetchSummary(channel);
+  };
+
+  useEffect(() => {
+    if (isFirstChannelRender.current) {
+      isFirstChannelRender.current = false;
+      return;
+    }
+    if (hasGeneratedSummary.current) {
+      fetchSummary(channel);
+    }
+  }, [channel]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`/api/stats?channel=${channel}`);
+        const params = new URLSearchParams({ channel });
+        if (startDate) params.append("startDate", startDate);
+        if (endDate) params.append("endDate", endDate);
+
+        const response = await fetch(`/api/stats?${params.toString()}`);
         const data = await response.json();
         setStats(data);
       } catch (error) {
@@ -67,7 +120,7 @@ export default function Dashboard({ channel }: DashboardProps) {
     };
 
     fetchStats();
-  }, [channel]);
+  }, [channel, startDate, endDate]);
 
   if (loading) {
     return <div className="text-center py-8">데이터 로딩 중...</div>;
@@ -85,6 +138,33 @@ export default function Dashboard({ channel }: DashboardProps) {
 
   return (
     <div className="space-y-6">
+      {/* 이번 주 요약 */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold">이번 주 요약</h2>
+          <button
+            onClick={handleAiSummaryClick}
+            disabled={summaryLoading}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
+          >
+            {summaryLoading ? "생성 중..." : "AI 요약"}
+          </button>
+        </div>
+        {summaryError && (
+          <p className="text-red-500 text-sm">{summaryError}</p>
+        )}
+        {summary && !summaryLoading && (
+          <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+            {summary}
+          </p>
+        )}
+        {!summary && !summaryError && !summaryLoading && (
+          <p className="text-gray-400 text-sm">
+            AI 요약 버튼을 눌러 이번 주 매출을 확인하세요
+          </p>
+        )}
+      </div>
+
       {/* KPI 카드 */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-6">

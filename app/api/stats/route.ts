@@ -14,14 +14,31 @@ export async function GET(request: NextRequest) {
     }
 
     const channel = request.nextUrl.searchParams.get("channel") || "all";
+    const startDate = request.nextUrl.searchParams.get("startDate");
+    const endDate = request.nextUrl.searchParams.get("endDate");
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     let query = supabase.from("orders").select("*");
 
     // 채널 필터
     if (channel !== "all") {
-      const channelName = channel === "smartstore" ? "스마트스토어" : "카페24";
-      query = query.eq("channel", channelName);
+      let channelName = "";
+      if (channel === "smartstore") channelName = "스마트스토어";
+      else if (channel === "cafe24") channelName = "카페24";
+      else if (channel === "coupang") channelName = "쿠팡";
+
+      if (channelName) {
+        query = query.eq("channel", channelName);
+      }
+    }
+
+    // 기간 필터
+    if (startDate) {
+      query = query.gte("order_date", startDate);
+    }
+    if (endDate) {
+      query = query.lte("order_date", endDate);
     }
 
     const { data, error } = await query;
